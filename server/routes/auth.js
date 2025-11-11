@@ -60,10 +60,22 @@ router.get('/oauth/available', (req, res) => {
 // OAuth routes - always register routes, check credentials inside handlers
 // GitHub OAuth
 router.get('/github', (req, res, next) => {
+  console.log('GitHub OAuth route hit');
+  console.log('GITHUB_CLIENT_ID:', process.env.GITHUB_CLIENT_ID ? 'SET' : 'NOT SET');
+  console.log('GITHUB_CLIENT_SECRET:', process.env.GITHUB_CLIENT_SECRET ? 'SET' : 'NOT SET');
+
   if (process.env.GITHUB_CLIENT_ID && process.env.GITHUB_CLIENT_SECRET) {
+    console.log('Authenticating with GitHub...');
     passport.authenticate('github', { scope: ['user:email'] })(req, res, next);
   } else {
-    res.status(501).json({ error: 'GitHub OAuth is not configured' });
+    console.error('GitHub OAuth not configured - missing credentials');
+    res.status(501).json({
+      error: 'GitHub OAuth is not configured',
+      debug: {
+        hasClientId: !!process.env.GITHUB_CLIENT_ID,
+        hasClientSecret: !!process.env.GITHUB_CLIENT_SECRET
+      }
+    });
   }
 });
 

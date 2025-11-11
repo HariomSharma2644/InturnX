@@ -155,6 +155,32 @@ app.get('/api/debug/routes', (req, res) => {
   res.json({ routes });
 });
 
+// Debug endpoint to check environment variables
+app.get('/api/debug/env', (req, res) => {
+  res.json({
+    github: {
+      hasClientId: !!process.env.GITHUB_CLIENT_ID,
+      hasClientSecret: !!process.env.GITHUB_CLIENT_SECRET,
+      clientIdLength: process.env.GITHUB_CLIENT_ID ? process.env.GITHUB_CLIENT_ID.length : 0,
+      clientIdPrefix: process.env.GITHUB_CLIENT_ID ? process.env.GITHUB_CLIENT_ID.substring(0, 5) : 'N/A'
+    },
+    google: {
+      hasClientId: !!process.env.GOOGLE_CLIENT_ID,
+      hasClientSecret: !!process.env.GOOGLE_CLIENT_SECRET
+    },
+    linkedin: {
+      hasClientId: !!process.env.LINKEDIN_CLIENT_ID,
+      hasClientSecret: !!process.env.LINKEDIN_CLIENT_SECRET
+    },
+    other: {
+      hasClientUrl: !!process.env.CLIENT_URL,
+      clientUrl: process.env.CLIENT_URL,
+      hasMongoUri: !!process.env.MONGODB_URI,
+      hasJwtSecret: !!process.env.JWT_SECRET
+    }
+  });
+});
+
 // Export the Express app as a serverless function
 module.exports = app;
 

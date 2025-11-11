@@ -48,38 +48,78 @@ router.post('/demo', createDemoAccount);
 router.get('/profile', auth, getProfile);
 router.put('/profile', auth, uploadResume.single('resume'), updateProfile);
 
-// OAuth routes
-router.get('/github', passport.authenticate('github', { scope: ['user:email'] }));
-router.get('/github/callback',
-  passport.authenticate('github', { failureRedirect: '/login' }),
-  (req, res) => {
-    const token = jwt.sign({ userId: req.user._id }, process.env.JWT_SECRET || 'your-secret-key', {
-      expiresIn: '7d'
-    });
-    res.redirect(`${process.env.CLIENT_URL || 'http://localhost:5173'}/auth/callback?token=${token}&provider=github`);
-  }
-);
+// OAuth availability check
+router.get('/oauth/available', (req, res) => {
+  res.json({
+    github: !!(process.env.GITHUB_CLIENT_ID && process.env.GITHUB_CLIENT_SECRET),
+    google: !!(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET),
+    linkedin: !!(process.env.LINKEDIN_CLIENT_ID && process.env.LINKEDIN_CLIENT_SECRET)
+  });
+});
 
-router.get('/google', passport.authenticate('google', { scope: ['profile', 'email'] }));
-router.get('/google/callback',
-  passport.authenticate('google', { failureRedirect: '/login' }),
-  (req, res) => {
-    const token = jwt.sign({ userId: req.user._id }, process.env.JWT_SECRET || 'your-secret-key', {
-      expiresIn: '7d'
-    });
-    res.redirect(`${process.env.CLIENT_URL || 'http://localhost:5173'}/auth/callback?token=${token}&provider=google`);
-  }
-);
+// OAuth routes - only register if credentials are configured
+// GitHub OAuth
+if (process.env.GITHUB_CLIENT_ID && process.env.GITHUB_CLIENT_SECRET) {
+  router.get('/github', passport.authenticate('github', { scope: ['user:email'] }));
+  router.get('/github/callback',
+    passport.authenticate('github', { failureRedirect: '/login' }),
+    (req, res) => {
+      const token = jwt.sign({ userId: req.user._id }, process.env.JWT_SECRET || 'your-secret-key', {
+        expiresIn: '7d'
+      });
+      res.redirect(`${process.env.CLIENT_URL || 'http://localhost:5173'}/auth/callback?token=${token}&provider=github`);
+    }
+  );
+} else {
+  // Return error if OAuth not configured
+  router.get('/github', (req, res) => {
+    res.status(501).json({ error: 'GitHub OAuth is not configured' });
+  });
+  router.get('/github/callback', (req, res) => {
+    res.status(501).json({ error: 'GitHub OAuth is not configured' });
+  });
+}
 
-router.get('/linkedin', passport.authenticate('linkedin'));
-router.get('/linkedin/callback',
-  passport.authenticate('linkedin', { failureRedirect: '/login' }),
-  (req, res) => {
-    const token = jwt.sign({ userId: req.user._id }, process.env.JWT_SECRET || 'your-secret-key', {
-      expiresIn: '7d'
-    });
-    res.redirect(`${process.env.CLIENT_URL || 'http://localhost:5173'}/auth/callback?token=${token}&provider=linkedin`);
-  }
-);
+// Google OAuth
+if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
+  router.get('/google', passport.authenticate('google', { scope: ['profile', 'email'] }));
+  router.get('/google/callback',
+    passport.authenticate('google', { failureRedirect: '/login' }),
+    (req, res) => {
+      const token = jwt.sign({ userId: req.user._id }, process.env.JWT_SECRET || 'your-secret-key', {
+        expiresIn: '7d'
+      });
+      res.redirect(`${process.env.CLIENT_URL || 'http://localhost:5173'}/auth/callback?token=${token}&provider=google`);
+    }
+  );
+} else {
+  router.get('/google', (req, res) => {
+    res.status(501).json({ error: 'Google OAuth is not configured' });
+  });
+  router.get('/google/callback', (req, res) => {
+    res.status(501).json({ error: 'Google OAuth is not configured' });
+  });
+}
+
+// LinkedIn OAuth
+if (process.env.LINKEDIN_CLIENT_ID && process.env.LINKEDIN_CLIENT_SECRET) {
+  router.get('/linkedin', passport.authenticate('linkedin'));
+  router.get('/linkedin/callback',
+    passport.authenticate('linkedin', { failureRedirect: '/login' }),
+    (req, res) => {
+      const token = jwt.sign({ userId: req.user._id }, process.env.JWT_SECRET || 'your-secret-key', {
+        expiresIn: '7d'
+      });
+      res.redirect(`${process.env.CLIENT_URL || 'http://localhost:5173'}/auth/callback?token=${token}&provider=linkedin`);
+    }
+  );
+} else {
+  router.get('/linkedin', (req, res) => {
+    res.status(501).json({ error: 'LinkedIn OAuth is not configured' });
+  });
+  router.get('/linkedin/callback', (req, res) => {
+    res.status(501).json({ error: 'LinkedIn OAuth is not configured' });
+  });
+}
 
 module.exports = router;

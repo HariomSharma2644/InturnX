@@ -27,6 +27,10 @@ if (process.env.GITHUB_CLIENT_ID && process.env.GITHUB_CLIENT_SECRET) {
   const githubCallbackURL = process.env.GITHUB_CALLBACK_URL ||
                             `${process.env.CLIENT_URL || 'https://inturn-x.vercel.app'}/api/auth/github/callback`;
 
+  console.log('Initializing GitHub OAuth Strategy');
+  console.log('GitHub Client ID:', process.env.GITHUB_CLIENT_ID ? 'SET' : 'NOT SET');
+  console.log('GitHub Callback URL:', githubCallbackURL);
+
   passport.use(new GitHubStrategy({
         clientID: process.env.GITHUB_CLIENT_ID,
         clientSecret: process.env.GITHUB_CLIENT_SECRET,

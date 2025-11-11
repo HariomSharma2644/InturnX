@@ -31,8 +31,15 @@ const app = express();
 let dbConnected = false;
 const ensureDbConnection = async () => {
   if (!dbConnected) {
-    await connectDB();
-    dbConnected = true;
+    try {
+      await connectDB();
+      dbConnected = true;
+      console.log('Database connected successfully');
+    } catch (error) {
+      console.error('Database connection error:', error.message);
+      // Don't throw - allow app to start even if DB fails
+      // Individual routes can handle DB errors
+    }
   }
 };
 
@@ -67,8 +74,13 @@ app.use(passport.session());
 
 // Ensure DB connection before handling requests
 app.use(async (req, res, next) => {
-  await ensureDbConnection();
-  next();
+  try {
+    await ensureDbConnection();
+    next();
+  } catch (error) {
+    console.error('DB connection middleware error:', error);
+    next(); // Continue even if DB connection fails
+  }
 });
 
 // Routes
@@ -86,7 +98,17 @@ app.use('/api/leaderboard', leaderboardRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'OK', message: 'InturnX Server is running on Vercel' });
+  res.json({
+    status: 'OK',
+    message: 'InturnX Server is running on Vercel',
+    timestamp: new Date().toISOString(),
+    env: {
+      nodeEnv: process.env.NODE_ENV,
+      hasMongoUri: !!process.env.MONGODB_URI,
+      hasJwtSecret: !!process.env.JWT_SECRET,
+      hasSessionSecret: !!process.env.SESSION_SECRET
+    }
+  });
 });
 
 // Export the Express app as a serverless function

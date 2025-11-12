@@ -5,6 +5,34 @@ const LinkedInStrategy = require('passport-linkedin-oauth2').Strategy;
 const User = require('../models/User');
 const jwt = require('jsonwebtoken');
 
+const axios = require('axios');
+
+// Helper: fetch primary verified GitHub email when not present in profile
+async function fetchGithubPrimaryEmail(accessToken) {
+  try {
+    const resp = await axios.get('https://api.github.com/user/emails', {
+      headers: {
+        Authorization: `token ${accessToken}`,
+        Accept: 'application/vnd.github+json',
+        'User-Agent': 'InturnX-App'
+      }
+    });
+    const emails = resp.data || [];
+    // Prefer primary & verified
+    const primaryVerified = emails.find(e => e.primary && e.verified && e.email);
+    if (primaryVerified) return primaryVerified.email;
+    // Else any verified
+    const anyVerified = emails.find(e => e.verified && e.email);
+    if (anyVerified) return anyVerified.email;
+    // Else first email
+    const first = emails.find(e => e.email);
+    return first ? first.email : null;
+  } catch (err) {
+    console.error('Failed to fetch GitHub emails:', err.response?.status, err.response?.data || err.message);
+    return null;
+  }
+}
+
 // Only configure strategies if credentials are provided
 
 // Serialize user for session
@@ -45,11 +73,16 @@ if (process.env.GITHUB_CLIENT_ID && process.env.GITHUB_CLIENT_SECRET) {
           return done(null, user);
         }
 
-        // Check if user exists with same email
-        const email = profile.emails && profile.emails[0] ? profile.emails[0].value : null;
-        if (email) {
-          user = await User.findOne({ email });
+        // Determine email (GitHub may not provide it in profile)
+        let email = profile.emails && profile.emails[0] ? profile.emails[0].value : null;
+        if (!email) {
+          // Try to fetch primary/verified email via GitHub API
+          email = await fetchGithubPrimaryEmail(accessToken);
+        }
 
+        if (email) {
+          // Check if user exists with same email
+          user = await User.findOne({ email });
           if (user) {
             // Link GitHub account to existing user
             user.githubId = profile.id;
@@ -59,11 +92,12 @@ if (process.env.GITHUB_CLIENT_ID && process.env.GITHUB_CLIENT_SECRET) {
           }
         }
 
-        // Create new user
+        // Create new user with a safe fallback email if still missing
         const avatar = profile.photos && profile.photos[0] ? profile.photos[0].value : null;
+        const safeEmail = email || `github_${profile.id}@users.noreply.github.com`;
         const newUser = new User({
           name: profile.displayName || profile.username,
-          email: email,
+          email: safeEmail,
           githubId: profile.id,
           oauthProvider: 'github',
           role: 'student',
